@@ -1,34 +1,24 @@
 
 [hiveworkshop.com](https://www.hiveworkshop.com/threads/mdx-specifications.240487/)
 
-# MDX Specifications {#mdx-specifications .reader-title}
+# MDX Specifications
 
 GhostWolf
 
 This is mostly based on Magos\' MDX specifications, but is more
-accurate.\
-Many of the keyframe track types where found by BlinkBoy.
+accurate. Many of the keyframe track types where found by BlinkBoy.
 
 The notation of this specifications is as follows:
 
-Chunk names will always be given in their ASCII representation.\
-For example, every MDX starts with the bytes \'M\', \'D\', \'L\' and
-\'X\', or the string \"MDLX\".\
-The MDX format uses this concept extensively, as a way to give chunks
-meaningfull names.\
-In your code, you will probably want to define constants for this, for
+Chunk names will always be given in their ASCII representation. For example, every MDX starts with the bytes \'M\', \'D\', \'L\' and
+\'X\', or the string \"MDLX\". The MDX format uses this concept extensively, as a way to give chunks
+meaningfull names. In your code, you will probably want to define constants for this, for
 example `MDLX_CHUNK = 0x4d444c58`, and read the tags as integers, but
-this is up to you.\
-The (X) notation means X is optional, and may or may not exist.\
-Flag variables hold different values in their bits with special
-meanings.\
-The notation for them would be the hexadecimal number representing the
-correct bit.\
-If for example there is 0x4, it means that the third bit holds specific
-information which you can get with bitwise operators.\
-That is, (Flag & 0x4) == 0x4 will show you if the value in the third bit
-is true or false.\
-Type variables hold only one value, and will simply be written using
+this is up to you. The (X) notation means X is optional, and may or may not exist. Flag variables hold different values in their bits with special
+meanings. The notation for them would be the hexadecimal number representing the
+correct bit. If for example there is 0x4, it means that the third bit holds specific
+information which you can get with bitwise operators. That is, (Flag & 0x4) == 0x4 will show you if the value in the third bit
+is true or false. Type variables hold only one value, and will simply be written using
 normal decimal numbers.
 
 MDX is made out of many chunks with no predefined order, especially
@@ -103,20 +93,14 @@ if (reader.read(4) == "MDLX") {
 }
 ```
 
-Most of the chunks hold arrays of objects.\
-In many of the cases you can\'t know how many objects there are before
-parsing them, in which case the size will be written as \[?\] below.\
-For example, each sequence is known to be 132 bytes. Since you know the
+Most of the chunks hold arrays of objects. In many of the cases you can\'t know how many objects there are before
+parsing them, in which case the size will be written as \[?\] below. For example, each sequence is known to be 132 bytes. Since you know the
 size of the sequence chunk from the header, you therefore know that you
-have size/132 sequences.\
-On the other hand, materials can have variable sizes, so you must resize
-your array as you parse the chunk.\
-To allow you to parse chunks with variable sized objects, these chunks
-give you another size for each object they hold.\
-For example, every material object first starts with a uint32 size,
+have size/132 sequences. On the other hand, materials can have variable sizes, so you must resize
+your array as you parse the chunk. To allow you to parse chunks with variable sized objects, these chunks
+give you another size for each object they hold. For example, every material object first starts with a uint32 size,
 which is the size of the material itself including this size variable,
-and so we will call it inclusiveSize.\
-So whenever you have a chunk with variable sized objects, you do
+and so we will call it inclusiveSize. So whenever you have a chunk with variable sized objects, you do
 something along these lines:
 
 C++:
@@ -653,23 +637,18 @@ CornEmitter {
 ```
 
 As you can see, bones, event objects and collision shapes have no
-inclusive size, so they need different handling than the rest.\
-For bones, we know that it starts with a Node object, followed by two
+inclusive size, so they need different handling than the rest. For bones, we know that it starts with a Node object, followed by two
 uint32s, so we know that the size of each bone is the inclusive size of
-the node + 8.\
-Event objects also have a node, so we use its inclusive size, but we
-also need to get the size of the KEVT chunk if it exists.\
-For collision shapes, we need the inclusive size of the node, in
+the node + 8. Event objects also have a node, so we use its inclusive size, but we
+also need to get the size of the KEVT chunk if it exists. For collision shapes, we need the inclusive size of the node, in
 addition to the shape\'s data, which is 28 bytes for cubes, and 16 bytes
 for spheres.
 
 If you want a unified way to parse all the variable-sized chunks, then
 you can define the inclusive size by yourself for the chunks without
-it.\
-That is, for bones, define the inclusive size to be the node\'s
+it. That is, for bones, define the inclusive size to be the node\'s
 inclusive size + 8, for event objects define it as the inclusive size of
-the node plus the size of the KEVT chunk if it exists, and so on.\
-Once everything has correct inclusive sizes, you can do something like
+the node plus the size of the KEVT chunk if it exists, and so on. Once everything has correct inclusive sizes, you can do something like
 this:
 
 
@@ -688,13 +667,10 @@ while (totalSize < size) {
 
 Almost all of the optional fields in Wacraft 3 models are keyframe
 tracks, or in other words, things that can change over time while the
-animation runs.\
-A Node for example can have KGTR, KGRT, and KGSC tracks, but it doesn\'t
+animation runs. A Node for example can have KGTR, KGRT, and KGSC tracks, but it doesn\'t
 mean it has to have them. It can have neither of them, one of them, two
-of them or all three.\
-All tracks except for KEVT (event objects), follow the same structure,
-but with different types for the fields.\
-The structure looks like this:
+of them or all three. All tracks except for KEVT (event objects), follow the same structure,
+but with different types for the fields. The structure looks like this:
 
 
 C++:
@@ -710,8 +686,7 @@ Track {
 }
 ```
 
-Where X is a data type.\
-You get the interpolation type from the tracks chunk, which looks like
+Where X is a data type. You get the interpolation type from the tracks chunk, which looks like
 this:
 
 
@@ -811,55 +786,42 @@ the tracks being float\[4\].
 
 In order to know if there are indeed keyframe tracks, you can either
 track the size of your chunks, and if it\'s smaller than the inclusive
-size, it means there are tracks.\
-A second approach is to peek ahead with your reader, and see if you find
+size, it means there are tracks. A second approach is to peek ahead with your reader, and see if you find
 a matching tag. This is a little easier, as you don\'t actually have to
-check sizes this way.\
-The down side to the second approach is that you must know beforehand
+check sizes this way. The down side to the second approach is that you must know beforehand
 what all the possible track types that are allowed for every kind of
-object.\
-This is usually OK, since I\'ve listed them above, but what if there are
+object. This is usually OK, since I\'ve listed them above, but what if there are
 actually more we don\'t know about, and you suddenly get a model with
-one of them? The parser will fail with weird errors.\
-However, it is unlikely there are more common track types you will
+one of them? The parser will fail with weird errors. However, it is unlikely there are more common track types you will
 actually encounter, so choose which ever way you like better.
 
 Some notes:
 
 All rotations are expressed with quaternions, except for KCRL
-(cameras).\
-While there are 10 face types, generally only type 4 - triangles - is
-used.\
-Warcraft 3 animations are specified in milliseconds. That is, if your
+(cameras). While there are 10 face types, generally only type 4 - triangles - is
+used. Warcraft 3 animations are specified in milliseconds. That is, if your
 code is running at the normal 60 frames per second, then you add 1000/60
 to your animation counters every frame.
 
 What do I do with this?
 
-Let\'s say we parsed the whole file. Now what?\
-There is too much information, so I\'ll just go over the basics for now.
+Let\'s say we parsed the whole file. Now what? There is too much information, so I\'ll just go over the basics for now.
 
 Geosets
 
-The main goal is to draw the geosets.\
-This is a standard operation - take the vertices, texture coordinates,
+The main goal is to draw the geosets. This is a standard operation - take the vertices, texture coordinates,
 normals, face indices, and call an indexed draw function in your
-rendering API.\
-The primitive type can be any primitive type supported by the rendering
-API.\
-That being said, it will generally always be 4, or in other words
+rendering API. The primitive type can be any primitive type supported by the rendering
+API. That being said, it will generally always be 4, or in other words
 triangles.
 
 However\...
 
 Materials
 
-\...each geoset references a material.\
-Materials are groups of layers, where each layer gives information such
+\...each geoset references a material. Materials are groups of layers, where each layer gives information such
 as the texture used, the layer alpha for translucency, the texture
-coordinate set to be used, and much more.\
-As far as graphics code, every layer is a draw call.\
-In pseudo code it could be something along the lines of:
+coordinate set to be used, and much more. As far as graphics code, every layer is a draw call. In pseudo code it could be something along the lines of:
 
 
 C++:
@@ -882,8 +844,7 @@ Layers
 
 So what should applyLayer above do?
 
-textureId\
-The textureId is an index into the model\'s textures list, which you
+textureId The textureId is an index into the model\'s textures list, which you
 need to bind into your rendering API.
 
 
@@ -893,26 +854,20 @@ C++:
 bindTexture(textures[layer.textureId])
 ```
 
-filterMode\
-The filterMode refers to what kind of graphics operation this layer has,
-and usually involves blending.\
-Conceptually it\'s very similar to how you\'d combine layers in a 2D
-image editing software like Photoshop.\
-Each layer has its own mode, like \"add\", \"blend\", etc., and the
+filterMode The filterMode refers to what kind of graphics operation this layer has,
+and usually involves blending. Conceptually it\'s very similar to how you\'d combine layers in a 2D
+image editing software like Photoshop. Each layer has its own mode, like \"add\", \"blend\", etc., and the
 result is the combination of all layers.
 
 If the filter mode is 0, this is a normal opaque draw call.
 
 If the filter mode is 1, this is an alpha-tested opaque draw call with
-alpha=0.75.\
-This means that any pixel resulting from this draw call with alpha\<0.75
-will not be drawn.\
-This can be achieved either directly via the rendering API, or inside
+alpha=0.75. This means that any pixel resulting from this draw call with alpha\<0.75
+will not be drawn. This can be achieved either directly via the rendering API, or inside
 GPU shaders.
 
 Filter modes 2-6 are for blended draw calls, with different blending
-operations.\
-Here\'s code that selects them for WebGL:
+operations. Here\'s code that selects them for WebGL:
 
 
 JavaScript:
@@ -949,19 +904,13 @@ switch (filterMode) {
 }
 ```
 
-coordId\
-The coordId field selects a specific coordinate set in the geoset.\
-Generally speaking this will always be 0, and every geoset will always
-have exactly one coordinate set.\
-This is due to the fact that no Warcraft 3-related model editing tools
-support more than one coordinate set.\
-There are a few models made over the years with multiple coordinate
+coordId The coordId field selects a specific coordinate set in the geoset. Generally speaking this will always be 0, and every geoset will always
+have exactly one coordinate set. This is due to the fact that no Warcraft 3-related model editing tools
+support more than one coordinate set. There are a few models made over the years with multiple coordinate
 sets. If you know of one I\'d be happy to get a copy
-![:)](data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 "Smile    :)"){shortname=":)"}
+![:)](data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7 "Smile    :)")
 
-flags\
-The flags field holds more graphics state information, like whether the
+flags The flags field holds more graphics state information, like whether the
 draw should be double sided, do depth checks, etc.
 
-The rest\...\
-\...are related to animations.
+The rest\... \...are related to animations.
