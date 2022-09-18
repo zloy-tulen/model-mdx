@@ -1,6 +1,7 @@
 pub mod chunk;
 pub mod extent;
 pub mod materialize;
+pub mod sequence;
 #[cfg(test)]
 mod tests;
 

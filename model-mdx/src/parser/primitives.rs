@@ -12,9 +12,11 @@ pub fn le_f32(input: &[u8]) -> Parser<f32> {
 
 /// Combinator that applies N times primitive parser and returns result
 /// in fixed size array.
-pub fn times<const N: usize, T: Copy + Default, P>(parser: P) -> impl Fn(&[u8]) -> Parser<[T; N]>
+pub fn times<'a, const N: usize, T: Copy + Default, P>(
+    parser: P,
+) -> impl Fn(&'a [u8]) -> Parser<'a, [T; N]>
 where
-    P: Fn(&[u8]) -> Parser<T> + Copy,
+    P: Fn(&'a [u8]) -> Parser<T> + Copy,
 {
     move |input| {
         let mut res: [T; N] = [Default::default(); N];
