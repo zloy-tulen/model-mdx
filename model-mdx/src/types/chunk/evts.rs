@@ -14,7 +14,9 @@ impl Chunk for Evts {
 }
 
 impl Materialized for Evts {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         unimplemented!();
     }
 

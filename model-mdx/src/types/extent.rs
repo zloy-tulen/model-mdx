@@ -10,8 +10,10 @@ pub struct Extent {
 }
 
 impl Materialized for Extent {
+    type Version = u32;
+
     /// Parse the chunk from given input
-    fn parse(input: &[u8]) -> Parser<Self> {
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, bounds_radius) = context("boundsRadius", le_f32)(input)?;
         let (input, minimum) = context("minimum", times::<3, f32, _>(le_f32))(input)?;
         let (input, maximum) = context("maximum", times::<3, f32, _>(le_f32))(input)?;

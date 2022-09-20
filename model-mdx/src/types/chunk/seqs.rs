@@ -19,7 +19,9 @@ impl Chunk for Seqs {
 }
 
 impl Materialized for Seqs {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, header) = context("SEQS header", Self::expect_header)(input)?;
         if header.size % SEQUENCE_SIZE != 0 {
             warn!("SEQS chunk contains not whole count of sequences!");

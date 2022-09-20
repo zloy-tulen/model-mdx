@@ -9,7 +9,9 @@ use nom::{bytes::complete::take, error::context, number::complete::le_u32};
 pub struct Tag(pub [u8; 4]);
 
 impl Materialized for Tag {
-    fn parse(input: &[u8]) -> Parser<Tag> {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Tag> {
         let mut tag_res: [u8; 4] = Default::default();
         let (input, tag) = take(4usize)(input)?;
         tag_res.copy_from_slice(&tag);
@@ -50,7 +52,9 @@ pub struct Header {
 }
 
 impl Materialized for Header {
-    fn parse(input: &[u8]) -> Parser<Header> {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Header> {
         let (input, tag) = context("tag", Tag::parse)(input)?;
         let (input, size) = context("size", le_u32)(input)?;
         Ok((
@@ -100,7 +104,9 @@ pub struct Literal<const S: usize> {
 }
 
 impl<const S: usize> Materialized for Literal<S> {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(_: Option<Self::Version>,input: &[u8]) -> Parser<Self> {
         let (input, literal_bytes) = context("literal", take(S))(input)?;
         if literal_bytes.len() != S {
             Err(nom::Err::Failure(ParseError::TooShortLiteral {

@@ -1,5 +1,7 @@
 pub mod chunk;
 pub mod extent;
+pub mod layer;
+pub mod material;
 pub mod materialize;
 pub mod sequence;
 #[cfg(test)]

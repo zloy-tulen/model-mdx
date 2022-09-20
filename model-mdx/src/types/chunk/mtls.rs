@@ -1,11 +1,15 @@
+use super::utils::Tag;
 use super::Chunk;
 use crate::encoder::error::Error as EncodeError;
+use crate::parser::primitives::parse_all;
 use crate::parser::Parser;
-use crate::types::materialize::Materialized;
-use super::utils::Tag;
+use crate::types::{material::Material, materialize::Materialized};
+use nom::error::context;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Mtls {}
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Mtls {
+    pub materials: Vec<Material>,
+}
 
 impl Chunk for Mtls {
     fn tag() -> Tag {
@@ -14,11 +18,23 @@ impl Chunk for Mtls {
 }
 
 impl Materialized for Mtls {
-    fn parse(input: &[u8]) -> Parser<Self> {
-        unimplemented!();
+    type Version = u32;
+
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        let (input, header) = context("MTLS header", Self::expect_header)(input)?;
+        let mut chunk_bytes = &input[0..header.size];
+        let (_, materials) = context(
+            "materials",
+            parse_all(|input| Material::parse_versioned(version, input)),
+        )(chunk_bytes)?;
+        Ok((input, Mtls { materials }))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        unimplemented!();
+        self.encode_header(4, output)?;
+        for v in self.materials.iter() {
+            v.encode(output)?;
+        }
+        Ok(())
     }
 }

@@ -56,6 +56,7 @@ use super::utils::Tag;
 use crate::encoder::error::Error as EncodeError;
 use crate::parser::Parser;
 use crate::types::materialize::Materialized;
+use nom::{error::context, combinator::peek};
 
 /// MDX file consists of hierarchy of chunks. They are started with
 /// known tags of 4 ASCII characters and size. There are many types
@@ -88,5 +89,22 @@ pub trait Chunk: Sized + Materialized {
     /// Write down only chunk header tag
     fn encode_tag(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
         Self::tag().encode(output)
+    }
+}
+
+/// Parse headers of chunks and pass them into user specified handler. 
+/// The combinator does this until input is not empty.
+pub fn parse_subchunks<F>(mut body: F) -> impl FnOnce(&[u8]) -> Parser<()> 
+where 
+F: FnMut(Header, &[u8]) -> Parser<()> 
+{
+    move |input| {
+        let mut cycle_input: &[u8] = input;
+        while !cycle_input.is_empty() {
+            let (input, header): (&[u8], Header) = context("subchunk header", peek(Materialized::parse))(cycle_input)?;
+            let (input, _) = body(header, input)?;
+            cycle_input = input;
+        }
+        Ok((cycle_input, ()))
     }
 }

@@ -1,8 +1,7 @@
 use super::extent::Extent;
 use super::materialize::{EncodeError, Materialized, Parser};
 use super::utils::*;
-use crate::parser::primitives::{le_f32, times};
-use nom::{error::context, number::complete::le_u32};
+use nom::error::context;
 
 pub const SEQUENCE_SIZE: usize = 132;
 pub const SEQUENCE_NAME_LENGTH: usize = 80;
@@ -19,15 +18,17 @@ pub struct Sequence {
 }
 
 impl Materialized for Sequence {
+    type Version = ();
+
     /// Parse the chunk from given input
-    fn parse(input: &[u8]) -> Parser<Self> {
-        let (input, name) = context("name", Literal::parse)(input)?;
-        let (input, interval) = context("interval", times::<2, u32, _>(le_u32))(input)?;
-        let (input, move_speed) = context("moveSpeed", le_f32)(input)?;
-        let (input, flags) = context("flags", le_u32)(input)?;
-        let (input, rarity) = context("rarity", le_f32)(input)?;
-        let (input, sync_point) = context("syncPoint", le_u32)(input)?;
-        let (input, extent) = context("extent", Extent::parse)(input)?;
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        let (input, name) = context("name", Materialized::parse)(input)?;
+        let (input, interval) = context("interval", Materialized::parse)(input)?;
+        let (input, move_speed) = context("moveSpeed", Materialized::parse)(input)?;
+        let (input, flags) = context("flags", Materialized::parse)(input)?;
+        let (input, rarity) = context("rarity", Materialized::parse)(input)?;
+        let (input, sync_point) = context("syncPoint", Materialized::parse)(input)?;
+        let (input, extent) = context("extent", Materialized::parse)(input)?;
         Ok((
             input,
             Sequence {

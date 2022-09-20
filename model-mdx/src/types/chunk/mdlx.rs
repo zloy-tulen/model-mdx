@@ -1,3 +1,4 @@
+use super::utils::Tag;
 use super::utils::*;
 use super::Chunk;
 use crate::encoder::error::Error as EncodeError;
@@ -5,7 +6,6 @@ use crate::parser::Parser;
 use crate::types::materialize::Materialized;
 use log::*;
 use nom::{bytes::complete::take, combinator::peek, error::context};
-use super::utils::Tag;
 
 use super::{
     atch::*, bone::*, bpos::*, cams::*, clid::*, corn::*, evts::*, fafx::*, geoa::*, geos::*,
@@ -81,11 +81,14 @@ impl Chunk for Mdlx {
 }
 
 impl Materialized for Mdlx {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(version_ext: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, _) = context("MDLX tag", Self::expect_tag)(input)?;
 
         let mut cycle_input = input;
         let mut result = Self::new();
+        let mut version: Option<Self::Version> = version_ext; 
         while !cycle_input.is_empty() {
             let (input, Header { tag, size }) =
                 context("chunk header", peek(Header::parse))(cycle_input)?;
@@ -94,99 +97,124 @@ impl Materialized for Mdlx {
                 .unwrap_or_else(|_| format!("{:?}", tag.0));
             trace!("Found chunk with tag {} and size {}", found, size);
             if tag == Vers::tag() {
-                let (input, chunk) = context("VERS chunk", Vers::parse)(input)?;
+                let (input, chunk) =
+                    context("VERS chunk", |input| Vers::parse_versioned(version, input))(input)?;
+                version = Some(chunk.version);
                 result.vers = Some(chunk);
                 cycle_input = input;
             } else if tag == Modl::tag() {
-                let (input, chunk) = context("MODL chunk", Modl::parse)(input)?;
+                let (input, chunk) =
+                    context("MODL chunk", |input| Modl::parse_versioned(version, input))(input)?;
                 result.modl = Some(chunk);
                 cycle_input = input;
             } else if tag == Seqs::tag() {
-                let (input, chunk) = context("SEQS chunk", Seqs::parse)(input)?;
+                let (input, chunk) =
+                    context("SEQS chunk", |input| Seqs::parse_versioned(version, input))(input)?;
                 result.seqs = Some(chunk);
                 cycle_input = input;
             } else if tag == Glbs::tag() {
-                let (input, chunk) = context("GLBS chunk", Glbs::parse)(input)?;
+                let (input, chunk) =
+                    context("GLBS chunk", |input| Glbs::parse_versioned(version, input))(input)?;
                 result.glbs = Some(chunk);
                 cycle_input = input;
             } else if tag == Texs::tag() {
-                let (input, chunk) = context("TEXS chunk", Texs::parse)(input)?;
+                let (input, chunk) =
+                    context("TEXS chunk", |input| Texs::parse_versioned(version, input))(input)?;
                 result.texs = Some(chunk);
                 cycle_input = input;
             } else if tag == Snds::tag() {
-                let (input, chunk) = context("SNDS chunk", Snds::parse)(input)?;
+                let (input, chunk) =
+                    context("SNDS chunk", |input| Snds::parse_versioned(version, input))(input)?;
                 result.snds = Some(chunk);
                 cycle_input = input;
             } else if tag == Mtls::tag() {
-                let (input, chunk) = context("MTLS chunk", Mtls::parse)(input)?;
+                let (input, chunk) =
+                    context("MTLS chunk", |input| Mtls::parse_versioned(version, input))(input)?;
                 result.mtls = Some(chunk);
                 cycle_input = input;
             } else if tag == Txan::tag() {
-                let (input, chunk) = context("TXAN chunk", Txan::parse)(input)?;
+                let (input, chunk) =
+                    context("TXAN chunk", |input| Txan::parse_versioned(version, input))(input)?;
                 result.txan = Some(chunk);
                 cycle_input = input;
             } else if tag == Geos::tag() {
-                let (input, chunk) = context("GEOS chunk", Geos::parse)(input)?;
+                let (input, chunk) =
+                    context("GEOS chunk", |input| Geos::parse_versioned(version, input))(input)?;
                 result.geos = Some(chunk);
                 cycle_input = input;
             } else if tag == Geoa::tag() {
-                let (input, chunk) = context("GEOA chunk", Geoa::parse)(input)?;
+                let (input, chunk) =
+                    context("GEOA chunk", |input| Geoa::parse_versioned(version, input))(input)?;
                 result.geoa = Some(chunk);
                 cycle_input = input;
             } else if tag == Bone::tag() {
-                let (input, chunk) = context("BONE chunk", Bone::parse)(input)?;
+                let (input, chunk) =
+                    context("BONE chunk", |input| Bone::parse_versioned(version, input))(input)?;
                 result.bone = Some(chunk);
                 cycle_input = input;
             } else if tag == Lite::tag() {
-                let (input, chunk) = context("LITE chunk", Lite::parse)(input)?;
+                let (input, chunk) =
+                    context("LITE chunk", |input| Lite::parse_versioned(version, input))(input)?;
                 result.lite = Some(chunk);
                 cycle_input = input;
             } else if tag == Help::tag() {
-                let (input, chunk) = context("HELP chunk", Help::parse)(input)?;
+                let (input, chunk) =
+                    context("HELP chunk", |input| Help::parse_versioned(version, input))(input)?;
                 result.help = Some(chunk);
                 cycle_input = input;
             } else if tag == Atch::tag() {
-                let (input, chunk) = context("ATCH chunk", Atch::parse)(input)?;
+                let (input, chunk) =
+                    context("ATCH chunk", |input| Atch::parse_versioned(version, input))(input)?;
                 result.atch = Some(chunk);
                 cycle_input = input;
             } else if tag == Pivt::tag() {
-                let (input, chunk) = context("PIVT chunk", Pivt::parse)(input)?;
+                let (input, chunk) =
+                    context("PIVT chunk", |input| Pivt::parse_versioned(version, input))(input)?;
                 result.pivt = Some(chunk);
                 cycle_input = input;
             } else if tag == Prem::tag() {
-                let (input, chunk) = context("PREM chunk", Prem::parse)(input)?;
+                let (input, chunk) =
+                    context("PREM chunk", |input| Prem::parse_versioned(version, input))(input)?;
                 result.prem = Some(chunk);
                 cycle_input = input;
             } else if tag == Pre2::tag() {
-                let (input, chunk) = context("PRE2 chunk", Pre2::parse)(input)?;
+                let (input, chunk) =
+                    context("PRE2 chunk", |input| Pre2::parse_versioned(version, input))(input)?;
                 result.pre2 = Some(chunk);
                 cycle_input = input;
             } else if tag == Ribb::tag() {
-                let (input, chunk) = context("RIBB chunk", Ribb::parse)(input)?;
+                let (input, chunk) =
+                    context("RIBB chunk", |input| Ribb::parse_versioned(version, input))(input)?;
                 result.ribb = Some(chunk);
                 cycle_input = input;
             } else if tag == Evts::tag() {
-                let (input, chunk) = context("EVTS chunk", Evts::parse)(input)?;
+                let (input, chunk) =
+                    context("EVTS chunk", |input| Evts::parse_versioned(version, input))(input)?;
                 result.evts = Some(chunk);
                 cycle_input = input;
             } else if tag == Cams::tag() {
-                let (input, chunk) = context("CAMS chunk", Cams::parse)(input)?;
+                let (input, chunk) =
+                    context("CAMS chunk", |input| Cams::parse_versioned(version, input))(input)?;
                 result.cams = Some(chunk);
                 cycle_input = input;
             } else if tag == Clid::tag() {
-                let (input, chunk) = context("CLID chunk", Clid::parse)(input)?;
+                let (input, chunk) =
+                    context("CLID chunk", |input| Clid::parse_versioned(version, input))(input)?;
                 result.clid = Some(chunk);
                 cycle_input = input;
             } else if tag == Bpos::tag() {
-                let (input, chunk) = context("BPOS chunk", Bpos::parse)(input)?;
+                let (input, chunk) =
+                    context("BPOS chunk", |input| Bpos::parse_versioned(version, input))(input)?;
                 result.bpos = Some(chunk);
                 cycle_input = input;
             } else if tag == Fafx::tag() {
-                let (input, chunk) = context("FAFX chunk", Fafx::parse)(input)?;
+                let (input, chunk) =
+                    context("FAFX chunk", |input| Fafx::parse_versioned(version, input))(input)?;
                 result.fafx = Some(chunk);
                 cycle_input = input;
             } else if tag == Corn::tag() {
-                let (input, chunk) = context("CORN chunk", Corn::parse)(input)?;
+                let (input, chunk) =
+                    context("CORN chunk", |input| Corn::parse_versioned(version, input))(input)?;
                 result.corn = Some(chunk);
                 cycle_input = input;
             } else {

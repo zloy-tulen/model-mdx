@@ -1,11 +1,229 @@
 pub use crate::encoder::error::Error as EncodeError;
-pub use crate::parser::Parser;
+use crate::parser::primitives::{le_f32, times};
+pub use crate::parser::{error::MdxParseError, Parser};
+use nom::{error::context, multi::count, number::complete::le_u32};
 
 /// Types that can be parsed and encoded to bytes
 pub trait Materialized: Sized {
-    /// Parse the chunk from given input
-    fn parse(input: &[u8]) -> Parser<Self>;
+    /// Extra info that is passed to parser to decode
+    /// from bytes correctly.
+    type Version: PartialEq + PartialOrd;
 
-    /// Encode the chunk to byte stream
+    /// Parse type from the given input with default version
+    fn parse(input: &[u8]) -> Parser<Self> {
+        Self::parse_versioned(None, input)
+    }
+
+    /// Parse the type from given input
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self>;
+
+    /// Encode the type to byte stream
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError>;
+}
+
+/// Helper to parse extra fields if we have non default version
+pub fn parse_versioned_opt<'a, F, T: Materialized>(
+    version: Option<T::Version>,
+    input: &'a [u8],
+    body: F,
+) -> Parser<'a, Option<T>>
+where
+    F: FnOnce(T::Version) -> Parser<'a, Option<T>>,
+{
+    if let Some(v) = version {
+        body(v)
+    } else {
+        Ok((input, None))
+    }
+}
+
+/// Helper to parse extra fields if we have version greater than
+/// given value.
+pub fn parse_versioned_greater<'a, T: Materialized, F>(
+    version: Option<T::Version>,
+    val: T::Version,
+    body: F,
+) -> impl FnOnce(&'a [u8]) -> Parser<'a, Option<T>>
+where
+    F: FnOnce(&'a [u8]) -> Parser<'a, T>,
+{
+    move |input| {
+        if let Some(v) = version {
+            if v > val {
+                let (input, value) = body(input)?;
+                Ok((input, Some(value)))
+            } else {
+                Ok((input, None))
+            }
+        } else {
+            Ok((input, None))
+        }
+    }
+}
+
+/// Parse `uint32` before collection and apply parser N times, collect result.
+pub fn parse_len_vec<T: Materialized, F>(parser: F) -> impl FnOnce(&[u8]) -> Parser<Vec<T>>
+where
+    F: FnMut(&[u8]) -> Parser<T>,
+{
+    |input| {
+        let (input, n): (&[u8], u32) = context("vector length", Materialized::parse)(input)?;
+        let (input, vec) = context("vector elements", count(parser, n as usize))(input)?;
+        Ok((input, vec))
+    }
+}
+
+/// Encodes count of elements first with `uint32` and next all elements.
+pub fn encode_len_vec<T: Materialized>(vec: &[T], output: &mut Vec<u8>) -> Result<(), EncodeError> {
+    (vec.len() as u32).encode(output)?;
+    for v in vec.iter() {
+        v.encode(output)?;
+    }
+    Ok(())
+}
+
+/// Helper that fetches `uint32` and executes subparser only on the region of input 
+/// that is covered by the inclusive size and checks that subparser consume all 
+/// input.
+pub fn parse_inclusive_sized<F, T>(body: F) -> impl FnOnce(&[u8]) -> Parser<T>
+where
+    F: FnOnce(&[u8]) -> Parser<T>,
+{
+    move |input| {
+        let (input, inclusive_size): (&[u8], u32) =
+            context("inclusive_size", Materialized::parse)(input)?;
+        if inclusive_size < 4 {
+            return Err(nom::Err::Failure(MdxParseError::InclusiveSizeTooSmall {
+                size: inclusive_size,
+            }));
+        } else if ((inclusive_size - 4) as usize) > input.len() {
+            return Err(nom::Err::Failure(
+                MdxParseError::InclusiveSizeNotEhoughInput {
+                    size: inclusive_size,
+                    input: input.len(),
+                },
+            ));
+        }
+
+        let sub_input = &input[0..(inclusive_size - 4) as usize];
+        let (inclusive_rest, value) = body(sub_input)?;
+        if !inclusive_rest.is_empty() {
+            return Err(nom::Err::Failure(MdxParseError::InclusiveLeftover {
+                input: inclusive_rest.len(),
+            }));
+        }
+        Ok((&input[(inclusive_size - 4) as usize..], value))
+    }
+}
+
+/// Records size of all enclosed encoders and writes before them inlcusive size of `uint32`
+pub fn encode_inclusive_sized<F>(output: &mut Vec<u8>, body: F) -> Result<(), EncodeError>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<(), EncodeError>,
+{
+    let mut buff = vec![];
+    body(&mut buff)?;
+    let inclusive_size = (buff.len() + 4) as u32;
+    inclusive_size.encode(output)?;
+    output.extend(buff);
+    Ok(())
+}
+
+/// Records size of all enclosed encoders and writes before them exclusive size of `uint32`
+pub fn encode_exclusive_sized<F>(output: &mut Vec<u8>, body: F) -> Result<(), EncodeError>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<(), EncodeError>,
+{
+    let mut buff = vec![];
+    body(&mut buff)?;
+    let exclusive_size = buff.len() as u32;
+    exclusive_size.encode(output)?;
+    output.extend(buff);
+    Ok(())
+}
+
+impl Materialized for f32 {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        le_f32(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        output.extend(self.to_le_bytes());
+        Ok(())
+    }
+}
+
+impl Materialized for u32 {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        le_u32(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        output.extend(self.to_le_bytes());
+        Ok(())
+    }
+}
+
+impl Materialized for [u32; 2] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<2, u32, _>(le_u32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [u32; 3] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<3, u32, _>(le_u32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [f32; 2] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<2, f32, _>(le_f32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [f32; 3] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<3, f32, _>(le_f32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
 }

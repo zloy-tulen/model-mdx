@@ -14,7 +14,9 @@ impl Chunk for Pivt {
 }
 
 impl Materialized for Pivt {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         unimplemented!();
     }
 

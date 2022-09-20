@@ -18,7 +18,9 @@ impl Chunk for Vers {
 }
 
 impl Materialized for Vers {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, _) = context("VERS header", Self::expect_header)(input)?;
         let (input, version) = context("version", le_u32)(input)?;
         Ok((input, Vers { version }))

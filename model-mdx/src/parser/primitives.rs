@@ -26,3 +26,20 @@ where
         Ok((input, res))
     }
 }
+
+/// Apply parser until all input is consumed, returns collected vector of elements
+pub fn parse_all<'a, P, T>(parse: P) -> impl Fn(&'a [u8]) -> Parser<'a, Vec<T>>
+where
+    P: Fn(&'a [u8]) -> Parser<T> + Copy,
+{
+    move |input| {
+        let mut cycle_input = input;
+        let mut vec = vec![];
+        while cycle_input.len() > 0 {
+            let (input, value) = parse(cycle_input)?;
+            cycle_input = input;
+            vec.push(value);
+        }
+        Ok((cycle_input, vec))
+    }
+}

@@ -14,7 +14,9 @@ impl Chunk for Clid {
 }
 
 impl Materialized for Clid {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         unimplemented!();
     }
 

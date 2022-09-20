@@ -14,7 +14,9 @@ impl Chunk for Cams {
 }
 
 impl Materialized for Cams {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         unimplemented!();
     }
 

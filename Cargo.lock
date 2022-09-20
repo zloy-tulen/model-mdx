@@ -391,6 +391,7 @@ dependencies = [
 name = "model-mdx"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "env_logger",
  "image-blp",
  "include_dir",

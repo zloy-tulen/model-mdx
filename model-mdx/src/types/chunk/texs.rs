@@ -14,7 +14,9 @@ impl Chunk for Texs {
 }
 
 impl Materialized for Texs {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         unimplemented!();
     }
 

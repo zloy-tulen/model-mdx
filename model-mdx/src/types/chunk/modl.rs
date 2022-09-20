@@ -25,7 +25,9 @@ impl Chunk for Modl {
 }
 
 impl Materialized for Modl {
-    fn parse(input: &[u8]) -> Parser<Self> {
+    type Version = u32;
+
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, _) = context("MODL header", Self::expect_header)(input)?;
         let (input, name) = context("name", Literal::<MODL_NAME_LENGTH>::parse)(input)?;
         let (input, animation_filename) = context(

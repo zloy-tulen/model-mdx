@@ -1,3 +1,4 @@
+use crate::types::layer::UnknownFilterMode;
 use nom::error::{ContextError, ErrorKind, ParseError};
 use std::fmt;
 use thiserror::Error;
@@ -24,12 +25,20 @@ pub enum MdxParseError<I: fmt::Debug> {
     /// in the file differs.
     #[error("Expected chunk {0}, but got {1}")]
     UnexpectedChunkTag(String, String),
-    /// Raised when we try to fetch fixed size string, but there is not 
+    /// Raised when we try to fetch fixed size string, but there is not
     /// enough bytes.
     #[error("Not enough input for dixed size string, expected {expected}, but got {found}")]
     TooShortLiteral { expected: usize, found: usize },
     #[error("Failed to convert string literal: {0}")]
     Utf8Conv(#[from] std::str::Utf8Error),
+    #[error("{0}")]
+    UnknownFilterMode(#[from] UnknownFilterMode),
+    #[error("Inclusive too small to handle itself: {size}")]
+    InclusiveSizeTooSmall { size: u32 },
+    #[error("Inclusive size too big, read: {size}, but input size: {input}")]
+    InclusiveSizeNotEhoughInput { size: u32, input: usize },
+    #[error("Inclusive size parser didn't consume all input, leftover: {input}")]
+    InclusiveLeftover { input: usize },
 }
 
 impl<'a> From<(&'a [u8], ErrorKind)> for MdxParseError<&'a [u8]> {
