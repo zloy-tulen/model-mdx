@@ -1,4 +1,5 @@
 use crate::types::layer::UnknownFilterMode;
+use crate::types::tracks::UnknownInterpolationType;
 use nom::error::{ContextError, ErrorKind, ParseError};
 use std::fmt;
 use thiserror::Error;
@@ -25,6 +26,10 @@ pub enum MdxParseError<I: fmt::Debug> {
     /// in the file differs.
     #[error("Expected chunk {0}, but got {1}")]
     UnexpectedChunkTag(String, String),
+    /// Raised when we parse tagged data and don't know how to parse unexpected
+    /// tag.
+    #[error("Found unknown tag {0}")]
+    UnknownTag(String),
     /// Raised when we try to fetch fixed size string, but there is not
     /// enough bytes.
     #[error("Not enough input for dixed size string, expected {expected}, but got {found}")]
@@ -33,9 +38,15 @@ pub enum MdxParseError<I: fmt::Debug> {
     Utf8Conv(#[from] std::str::Utf8Error),
     #[error("{0}")]
     UnknownFilterMode(#[from] UnknownFilterMode),
+    #[error("{0}")]
+    UnknownInterpolationType(#[from] UnknownInterpolationType),
+    #[error("Chunk size too large, read: {size}, but input size: {input}")]
+    ChunkNotEnoughInput { size: usize, input: usize },
+    #[error("Chunk parser didn't consume all input, leftover: {input}")]
+    ChunkLeftover { input: usize },
     #[error("Inclusive too small to handle itself: {size}")]
     InclusiveSizeTooSmall { size: u32 },
-    #[error("Inclusive size too big, read: {size}, but input size: {input}")]
+    #[error("Inclusive size too large, read: {size}, but input size: {input}")]
     InclusiveSizeNotEhoughInput { size: u32, input: usize },
     #[error("Inclusive size parser didn't consume all input, leftover: {input}")]
     InclusiveLeftover { input: usize },

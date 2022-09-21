@@ -1,7 +1,8 @@
 pub use crate::encoder::error::Error as EncodeError;
 use crate::parser::primitives::{le_f32, times};
-pub use crate::parser::{error::MdxParseError, Parser};
-use nom::{error::context, multi::count, number::complete::le_u32};
+pub use crate::parser::{error::MdxParseError as ParseError, Parser};
+pub use nom::error::context;
+use nom::{multi::count, number::complete::{le_u32, le_i32}};
 
 /// Types that can be parsed and encoded to bytes
 pub trait Materialized: Sized {
@@ -82,8 +83,8 @@ pub fn encode_len_vec<T: Materialized>(vec: &[T], output: &mut Vec<u8>) -> Resul
     Ok(())
 }
 
-/// Helper that fetches `uint32` and executes subparser only on the region of input 
-/// that is covered by the inclusive size and checks that subparser consume all 
+/// Helper that fetches `uint32` and executes subparser only on the region of input
+/// that is covered by the inclusive size and checks that subparser consume all
 /// input.
 pub fn parse_inclusive_sized<F, T>(body: F) -> impl FnOnce(&[u8]) -> Parser<T>
 where
@@ -93,22 +94,20 @@ where
         let (input, inclusive_size): (&[u8], u32) =
             context("inclusive_size", Materialized::parse)(input)?;
         if inclusive_size < 4 {
-            return Err(nom::Err::Failure(MdxParseError::InclusiveSizeTooSmall {
+            return Err(nom::Err::Failure(ParseError::InclusiveSizeTooSmall {
                 size: inclusive_size,
             }));
         } else if ((inclusive_size - 4) as usize) > input.len() {
-            return Err(nom::Err::Failure(
-                MdxParseError::InclusiveSizeNotEhoughInput {
-                    size: inclusive_size,
-                    input: input.len(),
-                },
-            ));
+            return Err(nom::Err::Failure(ParseError::InclusiveSizeNotEhoughInput {
+                size: inclusive_size,
+                input: input.len(),
+            }));
         }
 
         let sub_input = &input[0..(inclusive_size - 4) as usize];
         let (inclusive_rest, value) = body(sub_input)?;
         if !inclusive_rest.is_empty() {
-            return Err(nom::Err::Failure(MdxParseError::InclusiveLeftover {
+            return Err(nom::Err::Failure(ParseError::InclusiveLeftover {
                 input: inclusive_rest.len(),
             }));
         }
@@ -188,6 +187,49 @@ impl Materialized for [u32; 3] {
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         times::<3, u32, _>(le_u32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for i32 {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        le_i32(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        output.extend(self.to_le_bytes());
+        Ok(())
+    }
+}
+
+impl Materialized for [i32; 2] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<2, i32, _>(le_i32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [i32; 3] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<3, i32, _>(le_i32)(input)
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {

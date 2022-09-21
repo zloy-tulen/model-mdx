@@ -55,8 +55,9 @@ pub use vers::*;
 use super::utils::Tag;
 use crate::encoder::error::Error as EncodeError;
 use crate::parser::Parser;
-use crate::types::materialize::Materialized;
-use nom::{error::context, combinator::peek};
+use crate::types::materialize::{Materialized, ParseError};
+use log::*;
+use nom::{combinator::peek, error::context};
 
 /// MDX file consists of hierarchy of chunks. They are started with
 /// known tags of 4 ASCII characters and size. There are many types
@@ -92,17 +93,57 @@ pub trait Chunk: Sized + Materialized {
     }
 }
 
-/// Parse headers of chunks and pass them into user specified handler. 
+/// Parse headers of chunks and pass them into user specified handler.
 /// The combinator does this until input is not empty.
-pub fn parse_subchunks<F>(mut body: F) -> impl FnOnce(&[u8]) -> Parser<()> 
-where 
-F: FnMut(Header, &[u8]) -> Parser<()> 
+pub fn parse_subchunks<F>(mut body: F) -> impl FnOnce(&[u8]) -> Parser<()>
+where
+    F: FnMut(Header, &[u8]) -> Parser<()>,
 {
     move |input| {
         let mut cycle_input: &[u8] = input;
         while !cycle_input.is_empty() {
-            let (input, header): (&[u8], Header) = context("subchunk header", peek(Materialized::parse))(cycle_input)?;
-            let (input, _) = body(header, input)?;
+            let (input, header): (&[u8], Header) =
+                context("subchunk header", peek(Materialized::parse))(cycle_input)?;
+            let found: String = std::str::from_utf8(&header.tag.0)
+                .map(|s| s.to_owned())
+                .unwrap_or_else(|_| format!("{:?}", header.tag.0));
+            trace!("Found chunk with tag {} and size {}", found, header.size);
+            let inclusive_size = header.size + Header::size();
+            if input.len() < inclusive_size {
+                trace!("Rest input: {:?}", input);
+                return Err(nom::Err::Failure(ParseError::ChunkNotEnoughInput {
+                    size: header.size,
+                    input: input.len(),
+                }));
+            }
+            let (leftover, _) = body(header, &input[0..inclusive_size])?;
+            if leftover.len() > 0 {
+                return Err(nom::Err::Failure(ParseError::ChunkLeftover {
+                    input: leftover.len(),
+                }));
+            }
+            cycle_input = &input[inclusive_size..];
+        }
+        Ok((cycle_input, ()))
+    }
+}
+
+/// Parse only tag from input and pass them into user specified handler.
+/// The combinator does this until input is not empty.
+pub fn parse_tagged<F>(mut body: F) -> impl FnOnce(&[u8]) -> Parser<()>
+where
+    F: FnMut(Tag, &[u8]) -> Parser<()>,
+{
+    move |input| {
+        let mut cycle_input: &[u8] = input;
+        while !cycle_input.is_empty() {
+            let (input, tag): (&[u8], Tag) =
+                context("tagged data", peek(Materialized::parse))(cycle_input)?;
+            let found: String = std::str::from_utf8(&tag.0)
+                .map(|s| s.to_owned())
+                .unwrap_or_else(|_| format!("{:?}", tag.0));
+            trace!("Found tagged data with tag {}", found);
+            let (input, _) = body(tag, input)?;
             cycle_input = input;
         }
         Ok((cycle_input, ()))

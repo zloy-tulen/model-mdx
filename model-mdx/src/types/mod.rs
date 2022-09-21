@@ -6,6 +6,7 @@ pub mod materialize;
 pub mod sequence;
 #[cfg(test)]
 mod tests;
+pub mod tracks;
 
 use super::encoder::error::Error as EncodeError;
 use super::parser::error::Error as ParseError;

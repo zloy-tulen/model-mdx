@@ -1,9 +1,10 @@
 use super::materialize::*;
+use super::tracks::*;
 use super::utils::*;
 use crate::types::chunk::*;
 use bitflags::bitflags;
 use log::*;
-use nom::{bytes::complete::take, error::context};
+use nom::error::context;
 use std::fmt;
 
 // Layer {
@@ -117,14 +118,14 @@ impl Materialized for FilterMode {
 
 bitflags! {
     pub struct ShadingFlags: u32 {
-        const Unshaded = 0b00000001;
-        const SphereEnvMap = 0b00000010;
-        const Unknown4 = 0b00000100;
-        const Unknown8 = 0b00001000;
-        const TwoSided = 0b00010000;
-        const Unfogged = 0b00100000;
-        const NoDepthTest = 0b01000000;
-        const NoDepthSet = 0b10000000;
+        const UNSHADED = 0b00000001;
+        const SPHERE_ENV_MAP = 0b00000010;
+        const UNKNOWN4 = 0b00000100;
+        const UNKNOWN8 = 0b00001000;
+        const TWO_SIDED = 0b00010000;
+        const UNFOGGED = 0b00100000;
+        const NO_DEPTH_TEST = 0b01000000;
+        const NO_DEPTH_SET = 0b10000000;
     }
 }
 
@@ -167,6 +168,7 @@ impl Materialized for Layer {
 
     fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         parse_inclusive_sized(|input| {
+            trace!("Parsing fields of layer");
             let (input, filter_mode) = context("filter_mode", Materialized::parse)(input)?;
             let (input, shading_flags) = context("shading_flags", Materialized::parse)(input)?;
             let (input, texture_id) = context("texture_id", Materialized::parse)(input)?;
@@ -186,35 +188,38 @@ impl Materialized for Layer {
             let mut kfc3: Option<Kfc3> = None;
             let mut kfca: Option<Kfca> = None;
             let mut kftc: Option<Kftc> = None;
-            parse_subchunks(|header, input| {
-                if header.tag == Kmtf::tag() {
+            trace!("Parsing tracks of layer");
+            let (input, _) = parse_tagged(|tag, input| {
+                if tag == Kmtf::tag() {
                     let (input, chunk) = context("KMTF chunk", Materialized::parse)(input)?;
                     kmtf = Some(chunk);
                     Ok((input, ()))
-                } else if header.tag == Kmta::tag() {
+                } else if tag == Kmta::tag() {
                     let (input, chunk) = context("KMTA chunk", Materialized::parse)(input)?;
                     kmta = Some(chunk);
                     Ok((input, ()))
-                } else if header.tag == Kmte::tag() {
+                } else if tag == Kmte::tag() {
                     let (input, chunk) = context("KMTE chunk", Materialized::parse)(input)?;
                     kmte = Some(chunk);
                     Ok((input, ()))
-                } else if header.tag == Kfc3::tag() {
+                } else if tag == Kfc3::tag() {
                     let (input, chunk) = context("KFC3 chunk", Materialized::parse)(input)?;
                     kfc3 = Some(chunk);
                     Ok((input, ()))
-                } else if header.tag == Kfca::tag() {
+                } else if tag == Kfca::tag() {
                     let (input, chunk) = context("KFCA chunk", Materialized::parse)(input)?;
                     kfca = Some(chunk);
                     Ok((input, ()))
-                } else if header.tag == Kftc::tag() {
+                } else if tag == Kftc::tag() {
                     let (input, chunk) = context("KFTC chunk", Materialized::parse)(input)?;
                     kftc = Some(chunk);
                     Ok((input, ()))
                 } else {
-                    warn!("Unknown chunk {:?}, skipping it", &header.tag);
-                    let (input, _) = context("skip unknown chunk", take(header.size))(input)?;
-                    Ok((input, ()))
+                    let found: String = std::str::from_utf8(&tag.0)
+                        .map(|s| s.to_owned())
+                        .unwrap_or_else(|_| format!("{:?}", tag.0));
+                    error!("Unknown tag {}", found);
+                    return Err(nom::Err::Failure(ParseError::UnknownTag(found)));
                 }
             })(input)?;
             Ok((
@@ -311,10 +316,9 @@ impl Materialized for LayerExt {
     }
 }
 
+/// Holds `texture_id`
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kmtf {
-    pub texture_id: u32,
-}
+pub struct Kmtf(TrackChunk<u32>);
 
 impl Chunk for Kmtf {
     fn tag() -> Tag {
@@ -323,25 +327,21 @@ impl Chunk for Kmtf {
 }
 
 impl Materialized for Kmtf {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KMTF header", Self::expect_header)(input)?;
-        let (input, texture_id) = context("texture_id", Materialized::parse)(input)?;
-        Ok((input, Kmtf { texture_id }))
+        let (input, chunk) = context("KMTF track", Materialized::parse)(input)?;
+        Ok((input, Kmtf(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.texture_id.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }
 
+/// Holds `alpha` field
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kmta {
-    pub alpha: f32,
-}
+pub struct Kmta(pub TrackChunk<f32>);
 
 impl Chunk for Kmta {
     fn tag() -> Tag {
@@ -350,25 +350,21 @@ impl Chunk for Kmta {
 }
 
 impl Materialized for Kmta {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KMTA header", Self::expect_header)(input)?;
-        let (input, alpha) = context("alpha", Materialized::parse)(input)?;
-        Ok((input, Kmta { alpha }))
+        let (input, chunk) = context("KMTA track", Materialized::parse)(input)?;
+        Ok((input, Kmta(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.alpha.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }
 
+/// Holds `emissive_gain` field
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kmte {
-    pub emissive_gain: f32,
-}
+pub struct Kmte(pub TrackChunk<f32>);
 
 impl Chunk for Kmte {
     fn tag() -> Tag {
@@ -377,25 +373,21 @@ impl Chunk for Kmte {
 }
 
 impl Materialized for Kmte {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KMTE header", Self::expect_header)(input)?;
-        let (input, emissive_gain) = context("emissive_gain", Materialized::parse)(input)?;
-        Ok((input, Kmte { emissive_gain }))
+        let (input, chunk) = context("KMTE track", Materialized::parse)(input)?;
+        Ok((input, Kmte(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.emissive_gain.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }
 
+/// Holds `fresnel_color`
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kfc3 {
-    pub fresnel_color: [f32; 3],
-}
+pub struct Kfc3(pub TrackChunk<[f32; 3]>);
 
 impl Chunk for Kfc3 {
     fn tag() -> Tag {
@@ -404,25 +396,21 @@ impl Chunk for Kfc3 {
 }
 
 impl Materialized for Kfc3 {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KFC3 header", Self::expect_header)(input)?;
-        let (input, fresnel_color) = context("fresnel_color", Materialized::parse)(input)?;
-        Ok((input, Kfc3 { fresnel_color }))
+        let (input, chunk) = context("KFC3 track", Materialized::parse)(input)?;
+        Ok((input, Kfc3(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(12, output)?;
-        self.fresnel_color.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }
 
+/// Holds `fresnel_alpha`
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kfca {
-    pub fresnel_alpha: f32,
-}
+pub struct Kfca(pub TrackChunk<f32>);
 
 impl Chunk for Kfca {
     fn tag() -> Tag {
@@ -431,25 +419,21 @@ impl Chunk for Kfca {
 }
 
 impl Materialized for Kfca {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KFCA header", Self::expect_header)(input)?;
-        let (input, fresnel_alpha) = context("fresnel_alpha", Materialized::parse)(input)?;
-        Ok((input, Kfca { fresnel_alpha }))
+        let (input, chunk) = context("KFCA track", Materialized::parse)(input)?;
+        Ok((input, Kfca(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.fresnel_alpha.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }
 
+/// Holds `fresnel_team_color`
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Kftc {
-    pub fresnel_team_color: f32,
-}
+pub struct Kftc(pub TrackChunk<f32>);
 
 impl Chunk for Kftc {
     fn tag() -> Tag {
@@ -458,18 +442,14 @@ impl Chunk for Kftc {
 }
 
 impl Materialized for Kftc {
-    type Version = ();
+    type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, _) = context("KFTC header", Self::expect_header)(input)?;
-        let (input, fresnel_team_color) =
-            context("fresnel_team_color", Materialized::parse)(input)?;
-        Ok((input, Kftc { fresnel_team_color }))
+        let (input, chunk) = context("KFTC track", Materialized::parse)(input)?;
+        Ok((input, Kftc(chunk)))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.fresnel_team_color.encode(output)?;
-        Ok(())
+        self.0.encode(output)
     }
 }

@@ -21,12 +21,11 @@ impl Materialized for Mtls {
     type Version = u32;
 
     fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, header) = context("MTLS header", Self::expect_header)(input)?;
-        let mut chunk_bytes = &input[0..header.size];
-        let (_, materials) = context(
+        let (input, _) = context("MTLS header", Self::expect_header)(input)?;
+        let (input, materials) = context(
             "materials",
             parse_all(|input| Material::parse_versioned(version, input)),
-        )(chunk_bytes)?;
+        )(input)?;
         Ok((input, Mtls { materials }))
     }
 

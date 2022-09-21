@@ -77,6 +77,11 @@ impl Materialized for Header {
 }
 
 impl Header {
+    /// Get amount of bytes the header has when serialized
+    pub fn size() -> usize {
+        8
+    }
+
     /// Expect header with given tag
     pub fn expect(tag: Tag, input: &[u8]) -> Parser<Self> {
         let (input, header) = Header::parse(input)?;
