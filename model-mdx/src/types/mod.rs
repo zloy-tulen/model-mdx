@@ -1,10 +1,12 @@
 pub mod animation;
+pub mod bone;
 pub mod chunk;
 pub mod extent;
 pub mod geoset;
 pub mod layer;
 pub mod material;
 pub mod materialize;
+pub mod node;
 pub mod sequence;
 #[cfg(test)]
 mod tests;

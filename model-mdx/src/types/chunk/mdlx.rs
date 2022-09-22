@@ -26,7 +26,7 @@ pub struct Mdlx {
     pub txan: Option<Txan>,
     pub geos: Option<Geos>,
     pub geoa: Option<Geoa>,
-    pub bone: Option<Bone>,
+    pub bone: Option<BoneChunk>,
     pub lite: Option<Lite>,
     pub help: Option<Help>,
     pub atch: Option<Atch>,
@@ -141,9 +141,10 @@ impl Materialized for Mdlx {
                     context("GEOA chunk", |input| Geoa::parse_versioned(version, input))(input)?;
                 result.geoa = Some(chunk);
                 Ok((input, ()))
-            } else if tag == Bone::tag() {
-                let (input, chunk) =
-                    context("BONE chunk", |input| Bone::parse_versioned(version, input))(input)?;
+            } else if tag == BoneChunk::tag() {
+                let (input, chunk) = context("BONE chunk", |input| {
+                    BoneChunk::parse_versioned(version, input)
+                })(input)?;
                 result.bone = Some(chunk);
                 Ok((input, ()))
             } else if tag == Lite::tag() {
