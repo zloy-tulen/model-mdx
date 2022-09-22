@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod chunk;
 pub mod extent;
 pub mod geoset;

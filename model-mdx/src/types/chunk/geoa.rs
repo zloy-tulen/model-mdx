@@ -1,11 +1,15 @@
-use super::Chunk;
+use super::utils::*;
+use super::*;
 use crate::encoder::error::Error as EncodeError;
+use crate::parser::primitives::parse_all;
 use crate::parser::Parser;
+use crate::types::animation::GeosetAnimation;
 use crate::types::materialize::Materialized;
-use super::utils::Tag;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Geoa {}
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Geoa {
+    pub animations: Vec<GeosetAnimation>,
+}
 
 impl Chunk for Geoa {
     fn tag() -> Tag {
@@ -17,10 +21,15 @@ impl Materialized for Geoa {
     type Version = u32;
 
     fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        unimplemented!();
+        let (input, _) = context("GEOA header", Self::expect_header)(input)?;
+        let (input, animations) = context(
+            "animations",
+            parse_all(|input| Materialized::parse_versioned(version, input)),
+        )(input)?;
+        Ok((input, Geoa { animations }))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        unimplemented!();
+        encode_chunk::<Self, _>(|output| encode_fixed_vec(&self.animations)(output))(output)
     }
 }
