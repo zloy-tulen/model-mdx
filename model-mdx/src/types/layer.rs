@@ -193,27 +193,27 @@ impl Materialized for Layer {
                 if tag == Kmtf::tag() {
                     let (input, chunk) = context("KMTF chunk", Materialized::parse)(input)?;
                     kmtf = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else if tag == Kmta::tag() {
                     let (input, chunk) = context("KMTA chunk", Materialized::parse)(input)?;
                     kmta = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else if tag == Kmte::tag() {
                     let (input, chunk) = context("KMTE chunk", Materialized::parse)(input)?;
                     kmte = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else if tag == Kfc3::tag() {
                     let (input, chunk) = context("KFC3 chunk", Materialized::parse)(input)?;
                     kfc3 = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else if tag == Kfca::tag() {
                     let (input, chunk) = context("KFCA chunk", Materialized::parse)(input)?;
                     kfca = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else if tag == Kftc::tag() {
                     let (input, chunk) = context("KFTC chunk", Materialized::parse)(input)?;
                     kftc = Some(chunk);
-                    Ok((input, ()))
+                    Ok((input, false))
                 } else {
                     let found: String = std::str::from_utf8(&tag.0)
                         .map(|s| s.to_owned())

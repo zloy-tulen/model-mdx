@@ -1,5 +1,5 @@
 use super::utils::Tag;
-use super::Chunk;
+use super::*;
 use crate::encoder::error::Error as EncodeError;
 use crate::parser::primitives::parse_all;
 use crate::parser::Parser;
@@ -30,10 +30,6 @@ impl Materialized for Mtls {
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        for v in self.materials.iter() {
-            v.encode(output)?;
-        }
-        Ok(())
+        encode_chunk::<Self, _>(|output| encode_fixed_vec(&self.materials)(output))(output)
     }
 }

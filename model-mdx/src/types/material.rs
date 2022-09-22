@@ -38,7 +38,7 @@ impl Materialized for Material {
                 parse_versioned_greater(version, 800, context("shader", Materialized::parse))(
                     input,
                 )?;
-            let (input, _) = Tag::expect(LAYS_TAG, input)?;
+            let (input, _) = LAYS_TAG.expect(input)?;
             let (input, layers) =
                 parse_len_vec(|input| Materialized::parse_versioned(version, input))(input)?;
             Ok((

@@ -1,5 +1,6 @@
 use crate::types::layer::UnknownFilterMode;
 use crate::types::tracks::UnknownInterpolationType;
+use crate::types::geoset::UnknownFaceTypeGroup;
 use nom::error::{ContextError, ErrorKind, ParseError};
 use std::fmt;
 use thiserror::Error;
@@ -40,6 +41,8 @@ pub enum MdxParseError<I: fmt::Debug> {
     UnknownFilterMode(#[from] UnknownFilterMode),
     #[error("{0}")]
     UnknownInterpolationType(#[from] UnknownInterpolationType),
+    #[error("{0}")]
+    UnknownFaceTypeGroup(#[from] UnknownFaceTypeGroup),
     #[error("Chunk size too large, read: {size}, but input size: {input}")]
     ChunkNotEnoughInput { size: usize, input: usize },
     #[error("Chunk parser didn't consume all input, leftover: {input}")]

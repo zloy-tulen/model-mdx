@@ -1,11 +1,7 @@
-use super::utils::Tag;
-use super::Chunk;
-use crate::encoder::error::Error as EncodeError;
-use crate::parser::Parser;
-use crate::types::materialize::Materialized;
+use super::utils::*;
+use super::*;
+use crate::types::materialize::*;
 use crate::types::sequence::{Sequence, SEQUENCE_SIZE};
-use log::*;
-use nom::{error::context, multi::count};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Seqs {
@@ -22,20 +18,11 @@ impl Materialized for Seqs {
     type Version = u32;
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        let (input, header) = context("SEQS header", Self::expect_header)(input)?;
-        if header.size % SEQUENCE_SIZE != 0 {
-            warn!("SEQS chunk contains not whole count of sequences!");
-        }
-        let n = header.size / SEQUENCE_SIZE;
-        let (input, sequences) = context("sequences", count(Sequence::parse, n))(input)?;
+        let (input, sequences) = parse_fixed_elements_chunk::<SEQUENCE_SIZE, Seqs, _>(input)?;
         Ok((input, Seqs { sequences }))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        for s in self.sequences.iter() {
-            s.encode(output)?;
-        }
-        Ok(())
+        encode_chunk::<Seqs, _>(|output| encode_fixed_vec(&self.sequences)(output))(output)
     }
 }

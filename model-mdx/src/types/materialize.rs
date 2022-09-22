@@ -2,7 +2,10 @@ pub use crate::encoder::error::Error as EncodeError;
 use crate::parser::primitives::{le_f32, times};
 pub use crate::parser::{error::MdxParseError as ParseError, Parser};
 pub use nom::error::context;
-use nom::{multi::count, number::complete::{le_u32, le_i32}};
+use nom::{
+    multi::count,
+    number::complete::{le_i32, le_u16, le_u32, le_u8},
+};
 
 /// Types that can be parsed and encoded to bytes
 pub trait Materialized: Sized {
@@ -62,12 +65,32 @@ where
     }
 }
 
+/// Parse vector with known length in advance
+pub fn parse_fixed_vec<T: Materialized>(n: usize) -> impl FnOnce(&[u8]) -> Parser<Vec<T>> {
+    move |input| {
+        let (input, vec) = context("vector elements", count(Materialized::parse, n))(input)?;
+        Ok((input, vec))
+    }
+}
+
+/// Encode vector with known length in advance
+pub fn encode_fixed_vec<'a, T: Materialized>(
+    elements: &'a [T],
+) -> impl FnMut(&'a mut Vec<u8>) -> Result<(), EncodeError> + Copy {
+    move |output| {
+        for v in elements {
+            v.encode(output)?;
+        }
+        Ok(())
+    }
+}
+
 /// Parse `uint32` before collection and apply parser N times, collect result.
-pub fn parse_len_vec<T: Materialized, F>(parser: F) -> impl FnOnce(&[u8]) -> Parser<Vec<T>>
+pub fn parse_len_vec<T: Materialized, F>(parser: F) -> impl FnMut(&[u8]) -> Parser<Vec<T>>
 where
-    F: FnMut(&[u8]) -> Parser<T>,
+    F: FnMut(&[u8]) -> Parser<T> + Copy,
 {
-    |input| {
+    move |input| {
         let (input, n): (&[u8], u32) = context("vector length", Materialized::parse)(input)?;
         let (input, vec) = context("vector elements", count(parser, n as usize))(input)?;
         Ok((input, vec))
@@ -141,11 +164,37 @@ where
     Ok(())
 }
 
+impl Materialized for u8 {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        le_u8(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        output.push(*self);
+        Ok(())
+    }
+}
+
 impl Materialized for f32 {
     type Version = ();
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         le_f32(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        output.extend(self.to_le_bytes());
+        Ok(())
+    }
+}
+
+impl Materialized for u16 {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        le_u16(input)
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
@@ -187,6 +236,21 @@ impl Materialized for [u32; 3] {
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         times::<3, u32, _>(le_u32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [u32; 4] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<4, u32, _>(le_u32)(input)
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
@@ -240,6 +304,21 @@ impl Materialized for [i32; 3] {
     }
 }
 
+impl Materialized for [i32; 4] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<4, i32, _>(le_i32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
 impl Materialized for [f32; 2] {
     type Version = ();
 
@@ -260,6 +339,21 @@ impl Materialized for [f32; 3] {
 
     fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         times::<3, f32, _>(le_f32)(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for v in self {
+            output.extend(v.to_le_bytes());
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [f32; 4] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<4, f32, _>(le_f32)(input)
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {

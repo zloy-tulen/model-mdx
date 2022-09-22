@@ -1,11 +1,13 @@
 pub mod chunk;
 pub mod extent;
+pub mod geoset;
 pub mod layer;
 pub mod material;
 pub mod materialize;
 pub mod sequence;
 #[cfg(test)]
 mod tests;
+pub mod texture;
 pub mod tracks;
 
 use super::encoder::error::Error as EncodeError;

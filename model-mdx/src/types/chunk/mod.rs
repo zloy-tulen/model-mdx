@@ -55,7 +55,7 @@ pub use vers::*;
 use super::utils::Tag;
 use crate::encoder::error::Error as EncodeError;
 use crate::parser::Parser;
-use crate::types::materialize::{Materialized, ParseError};
+use crate::types::materialize::*;
 use log::*;
 use nom::{combinator::peek, error::context};
 
@@ -75,11 +75,11 @@ pub trait Chunk: Sized + Materialized {
     /// Parse tag only and guard that the tag matches with that is
     /// returned by [tag] function
     fn expect_tag(input: &[u8]) -> Parser<Tag> {
-        Tag::expect(Self::tag(), input)
+        Self::tag().expect(input)
     }
 
     /// Write down header with given size of body
-    fn encode_header(&self, size: usize, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+    fn encode_header(size: usize, output: &mut Vec<u8>) -> Result<(), EncodeError> {
         let header = Header {
             tag: Self::tag(),
             size,
@@ -88,7 +88,7 @@ pub trait Chunk: Sized + Materialized {
     }
 
     /// Write down only chunk header tag
-    fn encode_tag(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+    fn encode_tag(output: &mut Vec<u8>) -> Result<(), EncodeError> {
         Self::tag().encode(output)
     }
 }
@@ -129,10 +129,10 @@ where
 }
 
 /// Parse only tag from input and pass them into user specified handler.
-/// The combinator does this until input is not empty.
+/// The combinator does this until input is not empty or returns [true].
 pub fn parse_tagged<F>(mut body: F) -> impl FnOnce(&[u8]) -> Parser<()>
 where
-    F: FnMut(Tag, &[u8]) -> Parser<()>,
+    F: FnMut(Tag, &[u8]) -> Parser<bool>,
 {
     move |input| {
         let mut cycle_input: &[u8] = input;
@@ -143,9 +143,37 @@ where
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|_| format!("{:?}", tag.0));
             trace!("Found tagged data with tag {}", found);
-            let (input, _) = body(tag, input)?;
+            let (input, need_stop) = body(tag, input)?;
             cycle_input = input;
+            if need_stop { break; }
         }
         Ok((cycle_input, ()))
+    }
+}
+
+/// Parse chunk contents that consists of fixed size elements
+pub fn parse_fixed_elements_chunk<const S: usize, C: Chunk, T: Materialized>(
+    input: &[u8],
+) -> Parser<Vec<T>> {
+    let (input, header) = context("chunk header", C::expect_header)(input)?;
+    if header.size % S != 0 {
+        warn!("Chunk contains not whole count of elements!");
+    }
+    let n = header.size / S;
+    let (input, elements) = parse_fixed_vec(n)(input)?;
+    Ok((input, elements))
+}
+
+/// Records size of all enclosed encoders and writes before them header of given chunk
+pub fn encode_chunk<C: Chunk, F>(body: F) -> impl FnMut(&mut Vec<u8>) -> Result<(), EncodeError>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<(), EncodeError> + Copy,
+{
+    move |output| {
+        let mut buff = vec![];
+        body(&mut buff)?;
+        C::encode_header(buff.len(), output)?;
+        output.extend(buff);
+        Ok(())
     }
 }

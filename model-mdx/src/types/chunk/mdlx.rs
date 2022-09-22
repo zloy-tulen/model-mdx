@@ -222,7 +222,7 @@ impl Materialized for Mdlx {
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_tag(output)?;
+        Self::encode_tag(output)?;
         if let Some(chunk) = &self.vers {
             chunk.encode(output)?;
         }

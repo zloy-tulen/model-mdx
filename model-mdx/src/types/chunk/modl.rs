@@ -1,7 +1,6 @@
 use super::utils::*;
-use super::Chunk;
+use super::*;
 use crate::encoder::error::Error as EncodeError;
-use crate::encoder::primitives::push_le_u32;
 use crate::parser::Parser;
 pub use crate::types::extent::Extent;
 use crate::types::materialize::Materialized;
@@ -48,11 +47,11 @@ impl Materialized for Modl {
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
-        self.name.encode(output)?;
-        self.animation_filename.encode(output)?;
-        self.extent.encode(output)?;
-        push_le_u32(self.blend_time, output);
-        Ok(())
+        encode_chunk::<Self, _>(|output| {
+            self.name.encode(output)?;
+            self.animation_filename.encode(output)?;
+            self.extent.encode(output)?;
+            self.blend_time.encode(output)
+        })(output)
     }
 }

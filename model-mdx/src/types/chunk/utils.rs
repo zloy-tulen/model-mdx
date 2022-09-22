@@ -3,10 +3,20 @@ use crate::encoder::primitives::push_le_u32;
 use crate::parser::{error::MdxParseError as ParseError, Parser};
 use crate::types::materialize::Materialized;
 use nom::{bytes::complete::take, error::context, number::complete::le_u32};
+use std::fmt;
 
 /// Fixed 4-byte tag, usually ASCII  
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Tag(pub [u8; 4]);
+
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = std::str::from_utf8(&self.0)
+            .map(|s| s.to_owned())
+            .unwrap_or_else(|_| format!("{:?}", &self.0));
+        write!(f, "{}", str)
+    }
+}
 
 impl Materialized for Tag {
     type Version = ();
@@ -26,16 +36,11 @@ impl Materialized for Tag {
 
 impl Tag {
     /// Parse tag and check that it equals expected one
-    pub fn expect(expected: Tag, input: &[u8]) -> Parser<Tag> {
+    pub fn expect<'a>(&self, input: &'a [u8]) -> Parser<'a, Tag> {
         let (input, tag) = Tag::parse(input)?;
-        if tag != expected {
-            let expected: String = std::str::from_utf8(&expected.0)
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|_| format!("{:?}", &expected.0));
-            let found: String = std::str::from_utf8(&tag.0)
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|_| format!("{:?}", &tag.0));
-
+        if tag != *self {
+            let expected: String = format!("{}", self);
+            let found: String = format!("{}", tag);
             Err(nom::Err::Failure(ParseError::UnexpectedChunkTag(
                 expected, found,
             )))
@@ -86,12 +91,8 @@ impl Header {
     pub fn expect(tag: Tag, input: &[u8]) -> Parser<Self> {
         let (input, header) = Header::parse(input)?;
         if tag != header.tag {
-            let expected: String = std::str::from_utf8(&tag.0)
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|_| format!("{:?}", &tag.0));
-            let found: String = std::str::from_utf8(&header.tag.0)
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|_| format!("{:?}", &header.tag.0));
+            let expected: String = format!("{}", tag);
+            let found: String = format!("{}", header.tag);
 
             Err(nom::Err::Failure(ParseError::UnexpectedChunkTag(
                 expected, found,
@@ -111,7 +112,7 @@ pub struct Literal<const S: usize> {
 impl<const S: usize> Materialized for Literal<S> {
     type Version = u32;
 
-    fn parse_versioned(_: Option<Self::Version>,input: &[u8]) -> Parser<Self> {
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, literal_bytes) = context("literal", take(S))(input)?;
         if literal_bytes.len() != S {
             Err(nom::Err::Failure(ParseError::TooShortLiteral {

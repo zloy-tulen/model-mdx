@@ -27,7 +27,7 @@ impl Materialized for Vers {
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        self.encode_header(4, output)?;
+        Self::encode_header(4, output)?;
         push_le_u32(self.version, output);
         Ok(())
     }
