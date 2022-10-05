@@ -17,7 +17,7 @@ pub struct Bone {
 impl Materialized for Bone {
     type Version = u32;
 
-    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         let (input, node) = context("node", Materialized::parse)(input)?;
         let (input, geoset_id) = context("geoset_id", Materialized::parse)(input)?;
         let (input, geoset_animation_id) = context("geoset_animation_id", Materialized::parse)(input)?;

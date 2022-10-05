@@ -99,7 +99,7 @@ pub struct Node {
 impl Materialized for Node {
     type Version = u32;
 
-    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
         parse_inclusive_sized(|input| {
             let (input, name) = context("name", Materialized::parse)(input)?;
             let (input, object_id) = context("object_id", Materialized::parse)(input)?;
