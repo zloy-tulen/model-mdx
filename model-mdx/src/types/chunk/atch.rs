@@ -1,11 +1,14 @@
-use super::Chunk;
-use crate::encoder::error::Error as EncodeError;
-use crate::parser::Parser;
-use crate::types::materialize::Materialized;
 use super::utils::Tag;
+use super::*;
+use crate::encoder::error::Error as EncodeError;
+use crate::parser::{primitives::*, Parser};
+use crate::types::attachment::Attachment;
+use crate::types::materialize::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Atch {}
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Atch {
+    pub attachments: Vec<Attachment>,
+}
 
 impl Chunk for Atch {
     fn tag() -> Tag {
@@ -17,10 +20,15 @@ impl Materialized for Atch {
     type Version = u32;
 
     fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        unimplemented!();
+        let (input, _) = context("ATCH header", Self::expect_header)(input)?;
+        let (input, attachments) = context(
+            "attachments",
+            parse_all(|input| Materialized::parse_versioned(version, input)),
+        )(input)?;
+        Ok((input, Atch { attachments }))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        unimplemented!();
+        encode_chunk::<Self, _>(|output| encode_fixed_vec(&self.attachments)(output))(output)
     }
 }

@@ -1,4 +1,5 @@
 pub mod animation;
+pub mod attachment;
 pub mod bone;
 pub mod chunk;
 pub mod extent;
