@@ -1,6 +1,7 @@
 pub mod animation;
 pub mod attachment;
 pub mod bone;
+pub mod camera;
 pub mod chunk;
 pub mod extent;
 pub mod geoset;
