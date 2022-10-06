@@ -3,6 +3,7 @@ pub mod attachment;
 pub mod bone;
 pub mod camera;
 pub mod chunk;
+pub mod event;
 pub mod extent;
 pub mod geoset;
 pub mod layer;
