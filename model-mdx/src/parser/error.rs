@@ -31,6 +31,9 @@ pub enum MdxParseError<I: fmt::Debug> {
     /// tag.
     #[error("Found unknown tag {0}")]
     UnknownTag(String),
+    /// When we found unexpected collision shape
+    #[error("Unknown collision shape type with tag {tag}")]
+    UnknownCollisionShape { tag: u32 },
     /// Raised when we try to fetch fixed size string, but there is not
     /// enough bytes.
     #[error("Not enough input for dixed size string, expected {expected}, but got {found}")]

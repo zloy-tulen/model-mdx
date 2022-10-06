@@ -23,6 +23,6 @@ impl Materialized for Seqs {
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        encode_chunk::<Seqs, _>(|output| encode_fixed_vec(&self.sequences)(output))(output)
+        encode_chunk::<Self, _>(|output| encode_fixed_vec(&self.sequences)(output))(output)
     }
 }

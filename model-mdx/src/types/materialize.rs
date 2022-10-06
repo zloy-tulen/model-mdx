@@ -363,3 +363,37 @@ impl Materialized for [f32; 4] {
         Ok(())
     }
 }
+
+impl Materialized for [[f32; 3]; 2] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<2, [f32; 3], _>(|input| times::<3, f32, _>(le_f32)(input))(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for a in self {
+            for v in a {
+                output.extend(v.to_le_bytes());
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Materialized for [[f32; 3]; 3] {
+    type Version = ();
+
+    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        times::<3, [f32; 3], _>(|input| times::<3, f32, _>(le_f32)(input))(input)
+    }
+
+    fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
+        for a in self {
+            for v in a {
+                output.extend(v.to_le_bytes());
+            }
+        }
+        Ok(())
+    }
+}

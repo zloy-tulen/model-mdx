@@ -144,6 +144,7 @@ impl Materialized for Node {
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
         encode_inclusive_sized(output, |output| {
+            self.name.encode(output)?;
             self.object_id.encode(output)?;
             self.parent_id.encode(output)?;
             self.flags.encode(output)?;
