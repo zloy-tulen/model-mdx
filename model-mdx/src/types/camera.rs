@@ -32,6 +32,7 @@ pub struct Camera {
     pub kctr: Option<Kctr>,
     pub kttr: Option<Kttr>,
     pub kcrl: Option<Kcrl>,
+    pub ordered: Option<Vec<Tag>>,
 }
 
 impl Materialized for Camera {
@@ -50,18 +51,22 @@ impl Materialized for Camera {
             let mut kctr: Option<Kctr> = None;
             let mut kttr: Option<Kttr> = None;
             let mut kcrl: Option<Kcrl> = None;
+            let mut ordered = vec![];
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Kctr::tag() {
                     let (input, chunk) = context("KCTR chunk", Materialized::parse)(input)?;
                     kctr = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kttr::tag() {
                     let (input, chunk) = context("KTTR chunk", Materialized::parse)(input)?;
                     kttr = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kcrl::tag() {
                     let (input, chunk) = context("KCRL chunk", Materialized::parse)(input)?;
                     kcrl = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     let found: String = format!("{}", tag);
@@ -81,6 +86,7 @@ impl Materialized for Camera {
                     kctr,
                     kttr,
                     kcrl,
+                    ordered: Some(ordered),
                 },
             ))
         })(input)
@@ -94,14 +100,34 @@ impl Materialized for Camera {
             self.far_clipping_plane.encode(output)?;
             self.near_clipping_plane.encode(output)?;
             self.target_position.encode(output)?;
-            if let Some(v) = &self.kctr {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kttr {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kcrl {
-                v.encode(output)?;
+            if let Some(ordered) = &self.ordered {
+                for tag in ordered {
+                    if *tag == Kctr::tag() {
+                        if let Some(v) = &self.kctr {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kttr::tag() {
+                        if let Some(v) = &self.kttr {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kcrl::tag() {
+                        if let Some(v) = &self.kcrl {
+                            v.encode(output)?;
+                        }
+                    } else {
+                        warn!("Unknown tag {tag}, skipping...");
+                    }
+                }
+            } else {
+                if let Some(v) = &self.kctr {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kttr {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kcrl {
+                    v.encode(output)?;
+                }
             }
             Ok(())
         })

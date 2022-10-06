@@ -94,6 +94,7 @@ pub struct Node {
     pub kgtr: Option<Kgtr>,
     pub kgrt: Option<Kgrt>,
     pub kgsc: Option<Kgsc>,
+    pub ordered: Option<Vec<Tag>>,
 }
 
 impl Materialized for Node {
@@ -108,18 +109,22 @@ impl Materialized for Node {
             let mut kgtr: Option<Kgtr> = None;
             let mut kgrt: Option<Kgrt> = None;
             let mut kgsc: Option<Kgsc> = None;
+            let mut ordered = vec![];
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Kgtr::tag() {
                     let (input, chunk) = context("KGTR chunk", Materialized::parse)(input)?;
                     kgtr = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kgrt::tag() {
                     let (input, chunk) = context("KGRT chunk", Materialized::parse)(input)?;
                     kgrt = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kgsc::tag() {
                     let (input, chunk) = context("KGSC chunk", Materialized::parse)(input)?;
                     kgsc = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     let found: String = format!("{}", tag);
@@ -137,6 +142,7 @@ impl Materialized for Node {
                     kgtr,
                     kgrt,
                     kgsc,
+                    ordered: Some(ordered),
                 },
             ))
         })(input)
@@ -148,14 +154,34 @@ impl Materialized for Node {
             self.object_id.encode(output)?;
             self.parent_id.encode(output)?;
             self.flags.encode(output)?;
-            if let Some(v) = &self.kgtr {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kgrt {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kgsc {
-                v.encode(output)?;
+            if let Some(ordered) = &self.ordered {
+                for &tag in ordered {
+                    if tag == Kgtr::tag() {
+                        if let Some(v) = &self.kgtr {
+                            v.encode(output)?;
+                        }
+                    } else if tag == Kgrt::tag() {
+                        if let Some(v) = &self.kgrt {
+                            v.encode(output)?;
+                        }
+                    } else if tag == Kgsc::tag() {
+                        if let Some(v) = &self.kgsc {
+                            v.encode(output)?;
+                        }
+                    } else {
+                        warn!("Unknown tag {tag}, skipping...");
+                    }
+                }
+            } else {
+                if let Some(v) = &self.kgtr {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kgrt {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kgsc {
+                    v.encode(output)?;
+                }
             }
             Ok(())
         })

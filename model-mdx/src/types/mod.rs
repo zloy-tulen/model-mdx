@@ -9,6 +9,7 @@ pub mod event;
 pub mod extent;
 pub mod geoset;
 pub mod layer;
+pub mod light;
 pub mod material;
 pub mod materialize;
 pub mod node;

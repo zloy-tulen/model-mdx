@@ -24,6 +24,7 @@ pub struct GeosetAnimation {
     pub geoset_id: u32,
     pub kgao: Option<Kgao>,
     pub kgac: Option<Kgac>,
+    pub ordered: Option<Vec<Tag>>,
 }
 
 impl Materialized for GeosetAnimation {
@@ -37,15 +38,18 @@ impl Materialized for GeosetAnimation {
             let (input, geoset_id) = context("geoset_id", Materialized::parse)(input)?;
             let mut kgao: Option<Kgao> = None;
             let mut kgac: Option<Kgac> = None;
+            let mut ordered = vec![];
             trace!("Parsing tracks of layer");
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Kgao::tag() {
                     let (input, chunk) = context("KGAO chunk", Materialized::parse)(input)?;
                     kgao = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kgac::tag() {
                     let (input, chunk) = context("KGAC chunk", Materialized::parse)(input)?;
                     kgac = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     let found: String = format!("{}", tag);
@@ -62,6 +66,7 @@ impl Materialized for GeosetAnimation {
                     geoset_id,
                     kgao,
                     kgac,
+                    ordered: Some(ordered),
                 },
             ))
         })(input)
@@ -73,11 +78,27 @@ impl Materialized for GeosetAnimation {
             self.flags.encode(output)?;
             self.color.encode(output)?;
             self.geoset_id.encode(output)?;
-            if let Some(v) = &self.kgao {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kgac {
-                v.encode(output)?;
+            if let Some(ordered) = &self.ordered {
+                for tag in ordered {
+                    if *tag == Kgao::tag() {
+                        if let Some(v) = &self.kgao {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kgac::tag() {
+                        if let Some(v) = &self.kgac {
+                            v.encode(output)?;
+                        }
+                    } else {
+                        warn!("Unknown tag {tag}, skipping...");
+                    }
+                }
+            } else {
+                if let Some(v) = &self.kgao {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kgac {
+                    v.encode(output)?;
+                }
             }
             Ok(())
         })

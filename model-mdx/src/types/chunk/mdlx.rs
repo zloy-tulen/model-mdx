@@ -145,6 +145,7 @@ impl Materialized for Mdlx {
                 let (input, chunk) =
                     context("TXAN chunk", |input| Txan::parse_versioned(version, input))(input)?;
                 result.txan = Some(chunk);
+                ordered.push(tag);
                 Ok((input, ()))
             } else if tag == Geos::tag() {
                 let (input, chunk) =

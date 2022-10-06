@@ -161,6 +161,7 @@ pub struct Layer {
     pub kfc3: Option<Kfc3>,
     pub kfca: Option<Kfca>,
     pub kftc: Option<Kftc>,
+    pub ordered: Option<Vec<Tag>>,
 }
 
 impl Materialized for Layer {
@@ -188,31 +189,38 @@ impl Materialized for Layer {
             let mut kfc3: Option<Kfc3> = None;
             let mut kfca: Option<Kfca> = None;
             let mut kftc: Option<Kftc> = None;
+            let mut ordered = vec![];
             trace!("Parsing tracks of layer");
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Kmtf::tag() {
                     let (input, chunk) = context("KMTF chunk", Materialized::parse)(input)?;
                     kmtf = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kmta::tag() {
                     let (input, chunk) = context("KMTA chunk", Materialized::parse)(input)?;
                     kmta = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kmte::tag() {
                     let (input, chunk) = context("KMTE chunk", Materialized::parse)(input)?;
                     kmte = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kfc3::tag() {
                     let (input, chunk) = context("KFC3 chunk", Materialized::parse)(input)?;
                     kfc3 = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kfca::tag() {
                     let (input, chunk) = context("KFCA chunk", Materialized::parse)(input)?;
                     kfca = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kftc::tag() {
                     let (input, chunk) = context("KFTC chunk", Materialized::parse)(input)?;
                     kftc = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     let found: String = std::str::from_utf8(&tag.0)
@@ -238,6 +246,7 @@ impl Materialized for Layer {
                     kfc3,
                     kfca,
                     kftc,
+                    ordered: Some(ordered),
                 },
             ))
         })(input)
@@ -254,23 +263,55 @@ impl Materialized for Layer {
             if let Some(v) = &self.extra {
                 v.encode(output)?;
             }
-            if let Some(v) = &self.kmtf {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kmta {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kmte {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kfc3 {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kfca {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.kftc {
-                v.encode(output)?;
+            if let Some(ordered) = &self.ordered {
+                for tag in ordered {
+                    if *tag == Kmtf::tag() {
+                        if let Some(v) = &self.kmtf {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kmta::tag() {
+                        if let Some(v) = &self.kmta {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kmte::tag() {
+                        if let Some(v) = &self.kmte {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kfc3::tag() {
+                        if let Some(v) = &self.kfc3 {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kfca::tag() {
+                        if let Some(v) = &self.kfca {
+                            v.encode(output)?;
+                        }
+                    } else if *tag == Kftc::tag() {
+                        if let Some(v) = &self.kftc {
+                            v.encode(output)?;
+                        }
+                    } else {
+                        warn!("Unkown tag {tag}, skipping it...");
+                    }
+                }
+            } else {
+                if let Some(v) = &self.kmtf {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kmta {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kmte {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kfc3 {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kfca {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.kftc {
+                    v.encode(output)?;
+                }
             }
             Ok(())
         })

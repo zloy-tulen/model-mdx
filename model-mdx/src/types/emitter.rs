@@ -215,6 +215,7 @@ pub struct ParticleEmitter2 {
     pub kp2n: Option<Kp2n>,
     pub kp2w: Option<Kp2w>,
     pub kp2v: Option<Kp2v>,
+    pub ordered: Option<Vec<Tag>>,
 }
 
 impl Materialized for ParticleEmitter2 {
@@ -258,26 +259,32 @@ impl Materialized for ParticleEmitter2 {
             let mut kp2n: Option<Kp2n> = None;
             let mut kp2w: Option<Kp2w> = None;
             let mut kp2v: Option<Kp2v> = None;
+            let mut ordered = vec![];
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Kp2s::tag() {
                     let (input, chunk) = context("KP2S chunk", Materialized::parse)(input)?;
                     kp2s = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2r::tag() {
                     let (input, chunk) = context("KP2R chunk", Materialized::parse)(input)?;
                     kp2r = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2l::tag() {
                     let (input, chunk) = context("KP2L chunk", Materialized::parse)(input)?;
                     kp2l = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2g::tag() {
                     let (input, chunk) = context("KP2G chunk", Materialized::parse)(input)?;
                     kp2g = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2e::tag() {
                     let (input, chunk) = context("KP2E chunk", Materialized::parse)(input)?;
                     kp2e = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2n::tag() {
                     let (input, chunk) = context("KP2N chunk", Materialized::parse)(input)?;
@@ -286,10 +293,12 @@ impl Materialized for ParticleEmitter2 {
                 } else if tag == Kp2w::tag() {
                     let (input, chunk) = context("KP2W chunk", Materialized::parse)(input)?;
                     kp2w = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2v::tag() {
                     let (input, chunk) = context("KP2V chunk", Materialized::parse)(input)?;
                     kp2v = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     let found: String = format!("{}", tag);
@@ -334,6 +343,7 @@ impl Materialized for ParticleEmitter2 {
                     kp2n,
                     kp2w,
                     kp2v,
+                    ordered: Some(ordered),
                 },
             ))
         })(input)
@@ -367,30 +377,71 @@ impl Materialized for ParticleEmitter2 {
             self.squirt.encode(output)?;
             self.priority_plane.encode(output)?;
             self.replaceable_id.encode(output)?;
-            if let Some(chunk) = &self.kp2s {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2r {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2l {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2g {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2e {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2n {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2w {
-                chunk.encode(output)?;
-            } 
-            if let Some(chunk) = &self.kp2v {
-                chunk.encode(output)?;
-            } 
+            if let Some(ordered) = &self.ordered {
+                for tag in ordered {
+                    if *tag == Kp2s::tag() {
+                        if let Some(chunk) = &self.kp2s {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2r::tag() {
+                        if let Some(chunk) = &self.kp2r {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2l::tag() {
+                        if let Some(chunk) = &self.kp2l {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2g::tag() {
+                        if let Some(chunk) = &self.kp2g {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2e::tag() {
+                        if let Some(chunk) = &self.kp2e {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2n::tag() {
+                        if let Some(chunk) = &self.kp2n {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2w::tag() {
+                        if let Some(chunk) = &self.kp2w {
+                            chunk.encode(output)?;
+                        } 
+                    } else if *tag == Kp2v::tag() {
+                        if let Some(chunk) = &self.kp2v {
+                            chunk.encode(output)?;
+                        } 
+                    } else {
+                        warn!("Unknown tag {tag}, skipping...");
+                    }
+                }
+            } else {
+                if let Some(chunk) = &self.kp2s {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2r {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2l {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2g {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2e {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2n {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2w {
+                    chunk.encode(output)?;
+                } 
+                if let Some(chunk) = &self.kp2v {
+                    chunk.encode(output)?;
+                } 
+            }
+
             Ok(())
         })
     }

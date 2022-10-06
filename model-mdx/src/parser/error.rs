@@ -1,6 +1,7 @@
 use crate::types::emitter::{UnknownFilterMode as EmitterUnknownFilterMode, UnknownHeadTail};
 use crate::types::geoset::UnknownFaceTypeGroup;
 use crate::types::layer::UnknownFilterMode as LayerUnknownFilterMode;
+use crate::types::light::UnknownLightType;
 use crate::types::tracks::UnknownInterpolationType;
 use nom::error::{ContextError, ErrorKind, ParseError};
 use std::fmt;
@@ -35,6 +36,9 @@ pub enum MdxParseError<I: fmt::Debug> {
     /// When we found unexpected collision shape
     #[error("Unknown collision shape type with tag {tag}")]
     UnknownCollisionShape { tag: u32 },
+    /// When we found unexpected collision shape
+    #[error("{0}")]
+    UnknownLightType(#[from] UnknownLightType),
     /// Raised when we try to fetch fixed size string, but there is not
     /// enough bytes.
     #[error("Not enough input for dixed size string, expected {expected}, but got {found}")]

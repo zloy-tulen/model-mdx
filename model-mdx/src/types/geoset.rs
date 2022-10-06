@@ -159,6 +159,7 @@ pub struct Geoset {
     // if (version > 800) {
     pub tangents: Option<Tangents>,
     pub skin: Option<Skin>,
+    pub ordered: Option<Vec<Tag>>,
     // }
     pub texture_coordinate_sets: Vec<TextureCoordinateSet>,
 }
@@ -241,14 +242,17 @@ impl Materialized for Geoset {
                 context("sequence_extents", parse_len_vec(Materialized::parse))(input)?;
             let mut tangents: Option<Tangents> = None;
             let mut skin: Option<Skin> = None;
+            let mut ordered = vec![];
             let (input, _) = parse_tagged(|tag, input| {
                 if tag == Tangents::tag() {
                     let (input, value) = context("tangents", Materialized::parse)(input)?;
                     tangents = Some(value);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Skin::tag() {
                     let (input, value) = context("skin", Materialized::parse)(input)?;
                     skin = Some(value);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else {
                     trace!("Found tag {}, finish searching geoset extra chunks", tag);
@@ -279,6 +283,7 @@ impl Materialized for Geoset {
                     sequence_extents,
                     tangents,
                     skin,
+                    ordered: Some(ordered),
                     texture_coordinate_sets,
                 },
             ))
@@ -311,11 +316,27 @@ impl Materialized for Geoset {
             }
             self.extent.encode(output)?;
             encode_len_vec(&self.sequence_extents, output)?;
-            if let Some(v) = &self.tangents {
-                v.encode(output)?;
-            }
-            if let Some(v) = &self.skin {
-                v.encode(output)?;
+            if let Some(ordered) = &self.ordered {
+                for &tag in ordered {
+                    if tag == Tangents::tag() {
+                        if let Some(v) = &self.tangents {
+                            v.encode(output)?;
+                        }
+                    } else if tag == Skin::tag() {
+                        if let Some(v) = &self.skin {
+                            v.encode(output)?;
+                        }
+                    } else {
+                        warn!("Unkonwn tag {tag}, skipping it...");
+                    }
+                }
+            } else {
+                if let Some(v) = &self.tangents {
+                    v.encode(output)?;
+                }
+                if let Some(v) = &self.skin {
+                    v.encode(output)?;
+                }
             }
             Self::uvas_tag().encode(output)?;
             encode_len_vec(&self.texture_coordinate_sets, output)
