@@ -1,6 +1,7 @@
-use crate::types::layer::UnknownFilterMode;
-use crate::types::tracks::UnknownInterpolationType;
+use crate::types::emitter::{UnknownFilterMode as EmitterUnknownFilterMode, UnknownHeadTail};
 use crate::types::geoset::UnknownFaceTypeGroup;
+use crate::types::layer::UnknownFilterMode as LayerUnknownFilterMode;
+use crate::types::tracks::UnknownInterpolationType;
 use nom::error::{ContextError, ErrorKind, ParseError};
 use std::fmt;
 use thiserror::Error;
@@ -41,7 +42,11 @@ pub enum MdxParseError<I: fmt::Debug> {
     #[error("Failed to convert string literal: {0}")]
     Utf8Conv(#[from] std::str::Utf8Error),
     #[error("{0}")]
-    UnknownFilterMode(#[from] UnknownFilterMode),
+    UnknownLayerFilterMode(#[from] LayerUnknownFilterMode),
+    #[error("{0}")]
+    UnknownEmitterFilterMode(#[from] EmitterUnknownFilterMode),
+    #[error("{0}")]
+    UnknownHeadTail(#[from] UnknownHeadTail),
     #[error("{0}")]
     UnknownInterpolationType(#[from] UnknownInterpolationType),
     #[error("{0}")]

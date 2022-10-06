@@ -4,6 +4,7 @@ pub mod bone;
 pub mod camera;
 pub mod chunk;
 pub mod collision;
+pub mod emitter;
 pub mod event;
 pub mod extent;
 pub mod geoset;
