@@ -1,11 +1,15 @@
-use super::Chunk;
-use crate::encoder::error::Error as EncodeError;
-use crate::parser::Parser;
-use crate::types::materialize::Materialized;
 use super::utils::Tag;
+use super::*;
+use crate::encoder::error::Error as EncodeError;
+use crate::parser::primitives::parse_all;
+use crate::parser::Parser;
+use crate::types::{materialize::Materialized, texture::TextureAnimation};
+use nom::error::context;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Txan {}
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Txan {
+    pub animations: Vec<TextureAnimation>,
+}
 
 impl Chunk for Txan {
     fn tag() -> Tag {
@@ -16,11 +20,16 @@ impl Chunk for Txan {
 impl Materialized for Txan {
     type Version = u32;
 
-    fn parse_versioned(_: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
-        unimplemented!();
+    fn parse_versioned(version: Option<Self::Version>, input: &[u8]) -> Parser<Self> {
+        let (input, _) = context("TXAN header", Self::expect_header)(input)?;
+        let (input, animations) = context(
+            "animations",
+            parse_all(|input| Materialized::parse_versioned(version, input)),
+        )(input)?;
+        Ok((input, Txan { animations }))
     }
 
     fn encode(&self, output: &mut Vec<u8>) -> Result<(), EncodeError> {
-        unimplemented!();
+        encode_chunk::<Self, _>(|output| encode_fixed_vec(&self.animations)(output))(output)
     }
 }
