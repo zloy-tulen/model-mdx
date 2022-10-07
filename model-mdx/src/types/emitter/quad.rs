@@ -285,6 +285,7 @@ impl Materialized for ParticleEmitter2 {
                 } else if tag == Kp2n::tag() {
                     let (input, chunk) = context("KP2N chunk", Materialized::parse)(input)?;
                     kp2n = Some(chunk);
+                    ordered.push(tag);
                     Ok((input, false))
                 } else if tag == Kp2w::tag() {
                     let (input, chunk) = context("KP2W chunk", Materialized::parse)(input)?;

@@ -160,7 +160,7 @@ pub struct Ktas(TrackChunk<[f32; 3]>);
 
 impl Chunk for Ktas {
     fn tag() -> Tag {
-        Tag([0x4b, 0x54, 0x41, 0x52]) // KTAS
+        Tag([0x4b, 0x54, 0x41, 0x53]) // KTAS
     }
 }
 
