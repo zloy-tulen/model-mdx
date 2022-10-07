@@ -1,8 +1,4 @@
-use super::chunk::utils::*;
-use super::chunk::*;
-use super::materialize::*;
-use super::node::Node;
-use super::tracks::TrackChunk;
+use super::super::{chunk::utils::*, chunk::*, materialize::*, node::Node, tracks::TrackChunk};
 use log::*;
 use std::fmt;
 
@@ -382,35 +378,35 @@ impl Materialized for ParticleEmitter2 {
                     if *tag == Kp2s::tag() {
                         if let Some(chunk) = &self.kp2s {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2r::tag() {
                         if let Some(chunk) = &self.kp2r {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2l::tag() {
                         if let Some(chunk) = &self.kp2l {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2g::tag() {
                         if let Some(chunk) = &self.kp2g {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2e::tag() {
                         if let Some(chunk) = &self.kp2e {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2n::tag() {
                         if let Some(chunk) = &self.kp2n {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2w::tag() {
                         if let Some(chunk) = &self.kp2w {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else if *tag == Kp2v::tag() {
                         if let Some(chunk) = &self.kp2v {
                             chunk.encode(output)?;
-                        } 
+                        }
                     } else {
                         warn!("Unknown tag {tag}, skipping...");
                     }
@@ -418,28 +414,28 @@ impl Materialized for ParticleEmitter2 {
             } else {
                 if let Some(chunk) = &self.kp2s {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2r {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2l {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2g {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2e {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2n {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2w {
                     chunk.encode(output)?;
-                } 
+                }
                 if let Some(chunk) = &self.kp2v {
                     chunk.encode(output)?;
-                } 
+                }
             }
 
             Ok(())
